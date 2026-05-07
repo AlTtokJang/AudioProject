@@ -8,7 +8,11 @@
 #include "app_main.h"
 #include "main.h"
 
+#include "lcd.h"
+#include "adc.h"
+
 void App_Main(void)
 {
-
+	LCD_PlotUi();
+	ADC_Start_VReg();
 }

@@ -1,0 +1,20 @@
+/*
+ * adc.h
+ *
+ *  Created on: 2026. 5. 7.
+ *      Author: ADJ
+ */
+
+#ifndef PERIPH_ADC_ADC_H_
+#define PERIPH_ADC_ADC_H_
+
+#define AUX_BUFFER_SIZE 512
+#define VREG_BUFFER_SIZE 4
+
+void ADC_Start_Aux(void);
+void ADC_Stop_Aux(void);
+
+void ADC_Start_VReg(void);
+void ADC_Stop_VReg(void);
+
+#endif /* PERIPH_ADC_ADC_H_ */

@@ -1,6 +1,7 @@
 # STM32CubeIDE build output
 Debug/
 Release/
+AudioProject Debug.launch
 
 # Ignore CubeIDE settings files by default
 .settings/*
