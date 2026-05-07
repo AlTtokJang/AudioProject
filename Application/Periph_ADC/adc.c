@@ -8,6 +8,9 @@
 #include "adc.h"
 #include "main.h"
 
+#include "global_define.h"
+#include "audio_pipeline.h"
+
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc3;
 extern DMA_HandleTypeDef hdma_adc1;
@@ -16,23 +19,31 @@ extern DMA_HandleTypeDef hdma_adc3;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 
-static volatile uint16_t auxBuffer[AUX_BUFFER_SIZE];
-static int16_t auxSample[AUX_BUFFER_SIZE];
+static volatile uint16_t auxBuffer[MASTER_BLOCK_SIZE * 2];
+static int16_t auxSample[MASTER_BLOCK_SIZE];
 
 static volatile uint16_t vregBuffer[VREG_BUFFER_SIZE];
 static uint8_t  vregValue[VREG_BUFFER_SIZE];
 static uint16_t vregLpf[VREG_BUFFER_SIZE];
 
-static void DigitalFilter_Aux(void);
+static void DigitalFilter_Aux(uint8_t target);
 static void DigitalFilter_VReg(void);
+
+void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
+{
+	if (hadc->Instance == ADC1)
+	{
+		DigitalFilter_Aux(0);
+	}
+}
 
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc->Instance == ADC1)
 	{
-		DigitalFilter_Aux();
+		DigitalFilter_Aux(1);
 	}
-	if (hadc->Instance == ADC3)
+	else if (hadc->Instance == ADC3)
 	{
 		DigitalFilter_VReg();
 	}
@@ -48,12 +59,17 @@ void ADC_Start_Aux(void)
 	__HAL_TIM_SET_COUNTER(&htim2, 0);
 	__HAL_TIM_CLEAR_FLAG(&htim2, TIM_FLAG_UPDATE);
 
-	for (int i = 0; i < AUX_BUFFER_SIZE; i++)
+	for (int i = 0; i < MASTER_BLOCK_SIZE * 2; i++)
 	{
 		auxBuffer[i] = 0;
 	}
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)auxBuffer, AUX_BUFFER_SIZE);
+	for (int i = 0; i < MASTER_BLOCK_SIZE; i++)
+	{
+		auxSample[i] = 0;
+	}
+
+	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)auxBuffer, MASTER_BLOCK_SIZE * 2);
 
 	HAL_TIM_Base_Start(&htim2);
 }
@@ -82,6 +98,8 @@ void ADC_Start_VReg(void)
 	for (int i = 0; i < VREG_BUFFER_SIZE; i++)
 	{
 		vregBuffer[i] = 0;
+		vregValue[i] = 0;
+		vregLpf[i] = 0;
 	}
 
 	HAL_ADC_Start_DMA(&hadc3, (uint32_t *)vregBuffer, VREG_BUFFER_SIZE);
@@ -100,15 +118,46 @@ void ADC_Stop_VReg(void)
 	__HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
 }
 
-static void DigitalFilter_Aux(void)
+void ADC_GetValue_EQ(uint8_t *out)
+{
+	if (out == NULL)
+	{
+		return;
+	}
+
+	for (uint8_t i = 0; i < 3; i++)
+	{
+		out[i] = vregValue[i + 1];
+	}
+}
+
+void ADC_GetValue_VOL(uint8_t *out)
+{
+	if (out == NULL)
+	{
+		return;
+	}
+
+	*out = vregValue[0];
+}
+
+static void DigitalFilter_Aux(uint8_t target)
 {
 	// 향후 필터 개선 필요
-	// DC 추적 및 노이즈 필터링
 
-	for (uint16_t i = 0; i < AUX_BUFFER_SIZE; i++)
+	uint16_t offset;
+
+	if (target == 0)
+		offset = 0;
+	else
+		offset = MASTER_BLOCK_SIZE;
+
+	for (uint16_t i = 0; i < MASTER_BLOCK_SIZE; i++)
 	{
-		auxSample[i] = auxBuffer[i] - 2048;
+		auxSample[i] = (int16_t)auxBuffer[offset + i] - 2048;
 	}
+
+	AudioPipeline_Push(auxSample, MASTER_BLOCK_SIZE);
 }
 
 static void DigitalFilter_VReg(void)

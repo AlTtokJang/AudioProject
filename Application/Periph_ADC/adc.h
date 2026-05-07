@@ -8,7 +8,8 @@
 #ifndef PERIPH_ADC_ADC_H_
 #define PERIPH_ADC_ADC_H_
 
-#define AUX_BUFFER_SIZE 512
+#include <stdint.h>
+
 #define VREG_BUFFER_SIZE 4
 
 void ADC_Start_Aux(void);

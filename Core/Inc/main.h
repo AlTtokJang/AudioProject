@@ -56,6 +56,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void UART3_Print(const char *msg);
+void Error_Indicator(uint8_t code);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
