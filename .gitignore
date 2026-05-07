@@ -1,4 +1,9 @@
 # STM32CubeIDE build output
 Debug/
 Release/
-.settings/
+
+# Ignore CubeIDE settings files by default
+.settings/*
+
+# But keep project encoding setting
+!.settings/org.eclipse.core.resources.prefs
