@@ -22,7 +22,8 @@
 #include "usbd_audio_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "global_define.h"
+#include "audio_pipeline.h"
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +32,7 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+extern volatile AudioSource_t audioSource;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -232,8 +233,9 @@ static int8_t AUDIO_MuteCtl_FS(uint8_t cmd)
 static int8_t AUDIO_PeriodicTC_FS(uint8_t *pbuf, uint32_t size, uint8_t cmd)
 {
   /* USER CODE BEGIN 5 */
-  UNUSED(pbuf);
-  UNUSED(size);
+  if (audioSource == AUDIO_SRC_USB)
+	  AudioPipeline_Push((const int16_t *)pbuf, size / sizeof(int16_t));
+
   UNUSED(cmd);
   return (USBD_OK);
   /* USER CODE END 5 */

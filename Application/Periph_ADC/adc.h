@@ -18,4 +18,7 @@ void ADC_Stop_Aux(void);
 void ADC_Start_VReg(void);
 void ADC_Stop_VReg(void);
 
+void ADC_GetValue_EQ(uint8_t *out);
+void ADC_GetValue_VOL(uint8_t *out);
+
 #endif /* PERIPH_ADC_ADC_H_ */

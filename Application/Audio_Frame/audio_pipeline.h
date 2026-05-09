@@ -12,5 +12,9 @@
 
 void AudioPipeline_Init(void);
 void AudioPipeline_Push(const int16_t *src, uint16_t count);
+uint16_t AudioPipeline_PopOutput(int16_t *dst, uint16_t count);
+void AudioPipeline_Process(void);
+void AudioPipeline_RingClear(void);
+void AudioPipeline_Loger(void);
 
 #endif /* AUDIO_FRAME_AUDIO_PIPELINE_H_ */

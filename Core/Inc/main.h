@@ -31,7 +31,7 @@ extern "C" {
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "global_define.h"
 /* USER CODE END Includes */
 
 /* Exported types ------------------------------------------------------------*/
@@ -56,7 +56,7 @@ void Error_Handler(void);
 
 /* USER CODE BEGIN EFP */
 void UART3_Print(const char *msg);
-void Error_Indicator(uint8_t code);
+void Error_Loger(AudioErrorCode_t code);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/

@@ -62,6 +62,7 @@ extern DMA_HandleTypeDef hdma_i2c2_tx;
 extern DMA_HandleTypeDef hdma_spi1_rx;
 extern DMA_HandleTypeDef hdma_spi2_tx;
 extern DMA_HandleTypeDef hdma_tim1_ch1;
+extern TIM_HandleTypeDef htim7;
 /* USER CODE BEGIN EV */
 
 /* USER CODE END EV */
@@ -287,6 +288,20 @@ void DMA1_Stream7_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Stream7_IRQn 1 */
 
   /* USER CODE END DMA1_Stream7_IRQn 1 */
+}
+
+/**
+  * @brief This function handles TIM7 global interrupt.
+  */
+void TIM7_IRQHandler(void)
+{
+  /* USER CODE BEGIN TIM7_IRQn 0 */
+
+  /* USER CODE END TIM7_IRQn 0 */
+  HAL_TIM_IRQHandler(&htim7);
+  /* USER CODE BEGIN TIM7_IRQn 1 */
+
+  /* USER CODE END TIM7_IRQn 1 */
 }
 
 /**
