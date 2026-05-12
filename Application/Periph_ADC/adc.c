@@ -11,6 +11,9 @@
 #include "global_define.h"
 #include "audio_pipeline.h"
 
+#define ADC_SAMPLE_SIZE MASTER_BLOCK_SIZE
+#define ADC_BUFFER_SIZE ADC_SAMPLE_SIZE * 2
+
 extern ADC_HandleTypeDef hadc1;
 extern ADC_HandleTypeDef hadc3;
 extern DMA_HandleTypeDef hdma_adc1;
@@ -19,8 +22,8 @@ extern DMA_HandleTypeDef hdma_adc3;
 extern TIM_HandleTypeDef htim2;
 extern TIM_HandleTypeDef htim6;
 
-static volatile uint16_t auxBuffer[MASTER_BLOCK_SIZE * 2];
-static int16_t auxSample[MASTER_BLOCK_SIZE];
+static volatile uint16_t auxBuffer[ADC_BUFFER_SIZE];
+static int16_t auxSample[ADC_SAMPLE_SIZE];
 
 static volatile uint16_t vregBuffer[VREG_BUFFER_SIZE];
 static uint8_t  vregValue[VREG_BUFFER_SIZE];
@@ -29,11 +32,17 @@ static uint16_t vregLpf[VREG_BUFFER_SIZE];
 static void DigitalFilter_Aux(uint8_t target);
 static void DigitalFilter_VReg(void);
 
+static volatile uint8_t auxIsRunning;
+static volatile uint8_t vregIsRunning;
+
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc->Instance == ADC1)
 	{
-		DigitalFilter_Aux(0);
+		if (auxIsRunning)
+		{
+			DigitalFilter_Aux(0);
+		}
 	}
 }
 
@@ -41,44 +50,76 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc->Instance == ADC1)
 	{
-		DigitalFilter_Aux(1);
+		if (auxIsRunning)
+		{
+			DigitalFilter_Aux(1);
+		}
 	}
 	else if (hadc->Instance == ADC3)
 	{
-		DigitalFilter_VReg();
+		if (vregIsRunning)
+		{
+			DigitalFilter_VReg();
+		}
 	}
 }
 
 void ADC_Start_Aux(void)
 {
-	HAL_TIM_Base_Stop(&htim2);
+	auxIsRunning = 0;
 
+	HAL_TIM_Base_Stop(&htim2);
 	HAL_ADC_Stop_DMA(&hadc1);
 	HAL_DMA_Abort(&hdma_adc1);
 
 	__HAL_TIM_SET_COUNTER(&htim2, 0);
 	__HAL_TIM_CLEAR_FLAG(&htim2, TIM_FLAG_UPDATE);
 
-	for (int i = 0; i < MASTER_BLOCK_SIZE * 2; i++)
+	for (uint16_t i = 0; i < ADC_BUFFER_SIZE; i++)
 	{
 		auxBuffer[i] = 0;
 	}
 
-	for (int i = 0; i < MASTER_BLOCK_SIZE; i++)
+	for (uint16_t i = 0; i < ADC_SAMPLE_SIZE; i++)
 	{
 		auxSample[i] = 0;
 	}
 
-	HAL_ADC_Start_DMA(&hadc1, (uint32_t *)auxBuffer, MASTER_BLOCK_SIZE * 2);
+	if (HAL_ADC_Start_DMA(&hadc1, (uint32_t *)auxBuffer, ADC_BUFFER_SIZE) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_AUX_START_FAIL);
+		auxIsRunning = 0;
+		return;
+	}
 
-	HAL_TIM_Base_Start(&htim2);
+	if (HAL_TIM_Base_Start(&htim2) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_AUX_TIM_START_FAIL);
+
+		HAL_ADC_Stop_DMA(&hadc1);
+		HAL_DMA_Abort(&hdma_adc1);
+
+		auxIsRunning = 0;
+		return;
+	}
+
+	auxIsRunning = 1;
 }
 
 void ADC_Stop_Aux(void)
 {
-	HAL_TIM_Base_Stop(&htim2);
+	auxIsRunning = 0;
 
-	HAL_ADC_Stop_DMA(&hadc1);
+	if (HAL_TIM_Base_Stop(&htim2) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_AUX_TIM_STOP_FAIL);
+	}
+
+	if (HAL_ADC_Stop_DMA(&hadc1) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_AUX_STOP_FAIL);
+	}
+
 	HAL_DMA_Abort(&hdma_adc1);
 
 	__HAL_TIM_SET_COUNTER(&htim2, 0);
@@ -87,31 +128,57 @@ void ADC_Stop_Aux(void)
 
 void ADC_Start_VReg(void)
 {
-	HAL_TIM_Base_Stop(&htim6);
+	vregIsRunning = 0;
 
+	HAL_TIM_Base_Stop(&htim6);
 	HAL_ADC_Stop_DMA(&hadc3);
 	HAL_DMA_Abort(&hdma_adc3);
 
 	__HAL_TIM_SET_COUNTER(&htim6, 0);
 	__HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
 
-	for (int i = 0; i < VREG_BUFFER_SIZE; i++)
+	for (uint8_t i = 0; i < VREG_BUFFER_SIZE; i++)
 	{
 		vregBuffer[i] = 0;
 		vregValue[i] = 0;
 		vregLpf[i] = 0;
 	}
 
-	HAL_ADC_Start_DMA(&hadc3, (uint32_t *)vregBuffer, VREG_BUFFER_SIZE);
+	if (HAL_ADC_Start_DMA(&hadc3, (uint32_t *)vregBuffer, VREG_BUFFER_SIZE) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_VREG_START_FAIL);
+		vregIsRunning = 0;
+		return;
+	}
 
-	HAL_TIM_Base_Start(&htim6);
+	if (HAL_TIM_Base_Start(&htim6) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_VREG_TIM_START_FAIL);
+
+		HAL_ADC_Stop_DMA(&hadc3);
+		HAL_DMA_Abort(&hdma_adc3);
+
+		vregIsRunning = 0;
+		return;
+	}
+
+	vregIsRunning = 1;
 }
 
 void ADC_Stop_VReg(void)
 {
-	HAL_TIM_Base_Stop(&htim6);
+	vregIsRunning = 0;
 
-	HAL_ADC_Stop_DMA(&hadc3);
+	if (HAL_TIM_Base_Stop(&htim6) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_VREG_TIM_STOP_FAIL);
+	}
+
+	if (HAL_ADC_Stop_DMA(&hadc3) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_ADC_VREG_STOP_FAIL);
+	}
+
 	HAL_DMA_Abort(&hdma_adc3);
 
 	__HAL_TIM_SET_COUNTER(&htim6, 0);
@@ -150,14 +217,14 @@ static void DigitalFilter_Aux(uint8_t target)
 	if (target == 0)
 		offset = 0;
 	else
-		offset = MASTER_BLOCK_SIZE;
+		offset = ADC_SAMPLE_SIZE;
 
-	for (uint16_t i = 0; i < MASTER_BLOCK_SIZE; i++)
+	for (uint16_t i = 0; i < ADC_SAMPLE_SIZE; i++)
 	{
 		auxSample[i] = (int16_t)auxBuffer[offset + i] - 2048;
 	}
 
-	AudioPipeline_Push(auxSample, MASTER_BLOCK_SIZE);
+	AudioPipeline_Push(auxSample, ADC_SAMPLE_SIZE);
 }
 
 static void DigitalFilter_VReg(void)

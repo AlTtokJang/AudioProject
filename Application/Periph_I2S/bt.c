@@ -17,7 +17,9 @@
 extern I2S_HandleTypeDef hi2s1;
 
 static int16_t i2sRxBuffer[I2S_RX_BUFFER_SIZE];
-static uint8_t i2sDropCount;
+
+static volatile uint8_t i2sDropCount;
+static volatile uint8_t btIsRunning;
 
 static void BT_I2S_ClearRxBuffer(void);
 
@@ -25,13 +27,16 @@ void HAL_I2S_RxHalfCpltCallback(I2S_HandleTypeDef *hi2s)
 {
 	if (hi2s->Instance == SPI1)
 	{
-		if (i2sDropCount > 0)
+		if (btIsRunning)
 		{
-			i2sDropCount--;
-			return;
-		}
+			if (i2sDropCount > 0)
+			{
+				i2sDropCount--;
+				return;
+			}
 
-		AudioPipeline_Push(&i2sRxBuffer[0], MASTER_BLOCK_SIZE);
+			AudioPipeline_Push(&i2sRxBuffer[0], MASTER_BLOCK_SIZE);
+		}
 	}
 }
 
@@ -39,18 +44,24 @@ void HAL_I2S_RxCpltCallback(I2S_HandleTypeDef *hi2s)
 {
 	if (hi2s->Instance == SPI1)
 	{
-		if (i2sDropCount > 0)
+		if (btIsRunning)
 		{
-			i2sDropCount--;
-			return;
-		}
+			if (i2sDropCount > 0)
+			{
+				i2sDropCount--;
+				return;
+			}
 
-		AudioPipeline_Push(&i2sRxBuffer[MASTER_BLOCK_SIZE], MASTER_BLOCK_SIZE);
+			AudioPipeline_Push(&i2sRxBuffer[MASTER_BLOCK_SIZE], MASTER_BLOCK_SIZE);
+		}
 	}
 }
 
 void I2S_Start_BT(void)
 {
+	i2sDropCount = 0;
+	btIsRunning = 0 ;
+
 	HAL_I2S_DMAStop(&hi2s1);
 
 	if (hi2s1.hdmarx != NULL)
@@ -62,14 +73,26 @@ void I2S_Start_BT(void)
 
 	i2sDropCount = I2S_RX_DROP_BLOCKS;
 
-	HAL_I2S_Receive_DMA(&hi2s1, (uint16_t*)i2sRxBuffer, I2S_RX_BUFFER_SIZE);
+	if (HAL_I2S_Receive_DMA(&hi2s1, (uint16_t*)i2sRxBuffer, I2S_RX_BUFFER_SIZE) == HAL_OK)
+	{
+		btIsRunning = 1;
+	}
+	else
+	{
+		btIsRunning = 0;
+		Error_Loger(AUDIO_ERR_I2S_RX_START_FAIL);
+	}
 }
 
 void I2S_Stop_BT(void)
 {
+	btIsRunning = 0;
 	i2sDropCount = 0;
 
-	HAL_I2S_DMAStop(&hi2s1);
+	if (HAL_I2S_DMAStop(&hi2s1) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_I2S_RX_STOP_FAIL);
+	}
 
 	if (hi2s1.hdmarx != NULL)
 	{

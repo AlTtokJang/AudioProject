@@ -82,6 +82,7 @@ void DAC_OutputStart(void)
 	}
 	else
 	{
+		Error_Loger(AUDIO_ERR_I2S_TX_START_FAIL);
 		i2sOutputRunning = 0;
 	}
 }
@@ -90,7 +91,10 @@ void DAC_OutputStop(void)
 {
 	i2sOutputRunning = 0;
 
-	HAL_I2S_DMAStop(&hi2s2);
+	if (HAL_I2S_DMAStop(&hi2s2) != HAL_OK)
+	{
+		Error_Loger(AUDIO_ERR_I2S_TX_STOP_FAIL);
+	}
 
 	if (hi2s2.hdmatx != NULL)
 	{
@@ -106,6 +110,9 @@ static void DAC_ClearTxBuffer(void)
 	{
 		i2sTxBuffer[i] = 0;
 	}
+
+	lastOutL = 0;
+	lastOutR = 0;
 }
 
 static void DAC_UpdateLastSample(const int16_t *buf, uint16_t count)
