@@ -24,6 +24,7 @@ extern volatile uint8_t i2sUseEq;
 
 static int16_t pcmRaw[AUDIO_PROCESS_MAX_SAMPLES];
 static int16_t pcmEQ[AUDIO_PROCESS_MAX_SAMPLES];
+static int16_t pcmMono[AUDIO_PROCESS_MAX_SAMPLES / 2];
 
 static AudioRing_t inputRing;
 static AudioRing_t outputRing;
@@ -32,6 +33,8 @@ static AudioRing_t fftRing;
 static int16_t inputRingMemory[INPUT_RING_SIZE];
 static int16_t outputRingMemory[OUTPUT_RING_SIZE];
 static int16_t fftRingMemory[FFT_RING_SIZE];
+
+static void AudioPipeline_StereoToMono(const int16_t *src, int16_t *dst, uint32_t frameCount);
 
 void AudioPipeline_Init(void)
 {
@@ -58,6 +61,21 @@ uint16_t AudioPipeline_PopOutput(int16_t *dst, uint16_t count)
 	}
 
 	return AudioRing_Pop(&outputRing, dst, count);
+}
+
+uint16_t AudioPipeline_PopMono(int16_t *dst, uint16_t count)
+{
+	if (dst == NULL || count == 0)
+	{
+		return 0;
+	}
+
+	return AudioRing_Pop(&fftRing, dst, count);
+}
+
+uint16_t AudioPipeline_Mono_Available(void)
+{
+	return AudioRing_Available(&fftRing);
 }
 
 void AudioPipeline_Process(void)
@@ -91,7 +109,20 @@ void AudioPipeline_Process(void)
 		AudioRing_Push(&outputRing, pcmRaw, popSize);
 	}
 
-	// 이후 작성 EQ및 소모 버퍼 연결
+	if (fftUseEq)
+	{
+		AudioPipeline_StereoToMono(pcmEQ, pcmMono, popSize / 2);
+	}
+	else
+	{
+		AudioPipeline_StereoToMono(pcmRaw, pcmMono, popSize / 2);
+	}
+
+	if (AudioRing_Available(&fftRing) >= popSize / 2)
+	{
+		AudioRing_Push(&fftRing, pcmMono, popSize / 2);
+	}
+
 }
 
 void AudioPipeline_RingClear(void)
@@ -99,6 +130,17 @@ void AudioPipeline_RingClear(void)
 	AudioRing_Clear(&inputRing);
 	AudioRing_Clear(&outputRing);
 	AudioRing_Clear(&fftRing);
+}
+
+static void AudioPipeline_StereoToMono(const int16_t *src, int16_t *dst, uint32_t frameCount)
+{
+	for (uint32_t i = 0; i < frameCount; i++)
+	{
+		int16_t left = src[2U * i];
+		int16_t right = src[2U * i + 1U];
+
+		dst [i] = (left + right) / 2;
+	}
 }
 /*
  * 디버거 -------------------------------------------------------------------------------------
