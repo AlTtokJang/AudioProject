@@ -12,8 +12,8 @@
 #include "audio_ring.h"
 #include "eq.h"
 
-#define INPUT_RING_SIZE			(MASTER_BLOCK_SIZE * 3U)
-#define OUTPUT_RING_SIZE		(MASTER_BLOCK_SIZE * 3U)
+#define INPUT_RING_SIZE			(MASTER_BLOCK_SIZE * 11U)
+#define OUTPUT_RING_SIZE		(MASTER_BLOCK_SIZE * 11U)
 #define FFT_RING_SIZE			(MASTER_BLOCK_SIZE * 32U)
 
 #define AUDIO_SYNC_ADJUST_SAMPLES  4U
@@ -118,7 +118,7 @@ void AudioPipeline_Process(void)
 		AudioPipeline_StereoToMono(pcmRaw, pcmMono, popSize / 2);
 	}
 
-	if (AudioRing_Available(&fftRing) >= popSize / 2)
+	if (AudioRing_Free(&fftRing) >= popSize / 2)
 	{
 		AudioRing_Push(&fftRing, pcmMono, popSize / 2);
 	}

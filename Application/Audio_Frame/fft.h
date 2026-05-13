@@ -16,7 +16,7 @@
 #define ADC_THRESHOLD		3.0F
 #define PEAK_BUFFER_SIZE	512U
 
-#define DB_MIN				-30.0F
+#define DB_MIN				-40.0F
 #define DB_MAX				0.0F
 #define DB_TO_LINEAR(db)	(powf(10.0f, (db) / 20.0f))
 #define TARGET_PEAK_DB		-8.0F

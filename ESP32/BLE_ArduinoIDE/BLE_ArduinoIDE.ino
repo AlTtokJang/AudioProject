@@ -14,8 +14,8 @@ BluetoothA2DPSink a2dp_sink;
 /* ============================================================
  * I2S pin map: 3-pin only
  * ============================================================ */
-#define I2S_BCLK   26
-#define I2S_LRCK   25
+#define I2S_BCLK   21
+#define I2S_LRCK   23
 #define I2S_DOUT   22
 #define I2S_PORT   I2S_NUM_0
 
@@ -275,9 +275,9 @@ static void reduce_i2s_drive_strength(void)
    * 가장 약한 drive.
    * 신호가 약해서 STM32가 못 받는 느낌이면 BCLK만 CAP_1로 올려라.
    */
-  gpio_set_drive_capability((gpio_num_t)I2S_BCLK, GPIO_DRIVE_CAP_0);
-  gpio_set_drive_capability((gpio_num_t)I2S_LRCK, GPIO_DRIVE_CAP_0);
-  gpio_set_drive_capability((gpio_num_t)I2S_DOUT, GPIO_DRIVE_CAP_0);
+  gpio_set_drive_capability((gpio_num_t)I2S_BCLK, GPIO_DRIVE_CAP_2);
+  gpio_set_drive_capability((gpio_num_t)I2S_LRCK, GPIO_DRIVE_CAP_2);
+  gpio_set_drive_capability((gpio_num_t)I2S_DOUT, GPIO_DRIVE_CAP_2);
 
   gpio_set_pull_mode((gpio_num_t)I2S_BCLK, GPIO_FLOATING);
   gpio_set_pull_mode((gpio_num_t)I2S_LRCK, GPIO_FLOATING);
