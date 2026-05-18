@@ -1,6 +1,7 @@
 #ifndef FFT_H
 #define FFT_H
 
+/*
 #include <stdint.h>
 #include <math.h>
 
@@ -28,5 +29,24 @@ void FFT_PushMonoBlock(const int16_t *samples, uint32_t count);
 uint8_t FFT_Run(void);
 
 const uint8_t *FFT_GetLedLevels(void);
+*/
+
+#include <stdint.h>
+
+#define FFT_SIZE            2048U
+#define FFT_HOP_SIZE        (FFT_SIZE / 2U)
+
+#define FFT_BAND_COUNT      16U
+
+#define FFT_MIN_FREQ_HZ     60.0f
+#define FFT_MAX_FREQ_HZ     24000.0f
+
+void FFT_Init(void);
+void FFT_Reset(void);
+
+uint8_t FFT_Run(void);
+
+const float *FFT_GetBandRaw(void);
+
 
 #endif

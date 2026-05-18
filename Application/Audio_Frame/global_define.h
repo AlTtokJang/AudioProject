@@ -12,6 +12,13 @@
 
 typedef enum
 {
+	VISUAL_AGC_OFF = 0,
+	VISUAL_AGC_HOLD,
+	VISUAL_AGC_LIVE
+} VisualAGCMode_t;
+
+typedef enum
+{
 	AUDIO_SRC_USB = 0,
 	AUDIO_SRC_AUX,
 	AUDIO_SRC_BT

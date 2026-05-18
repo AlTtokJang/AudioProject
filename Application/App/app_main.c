@@ -15,6 +15,8 @@
 #include "adc.h"
 #include "dac.h"
 #include "fft.h"
+#include "visual_layer.h"
+#include "visual_renderer.h"
 #include "ws2812b.h"
 
 uint16_t pwmBuffer[PWM_BUF_SIZE];
@@ -27,6 +29,7 @@ void App_Main(void)
 	AudioPipeline_Init();
 	EQ_Init();
 	FFT_Init();
+	VisualRenderer_Init();
 
 	DAC_OutputStart();
 
@@ -39,8 +42,9 @@ void App_Main(void)
 
 		if (FFT_Run())
 		{
-			const uint8_t *levels = FFT_GetLedLevels();
+			const float *fft = FFT_GetBandRaw();
 
+			/*
 			if (!ws2812bBusy)
 			{
 				Plot_WS2812B(levels);
@@ -51,10 +55,15 @@ void App_Main(void)
 						(uint32_t *)pwmBuffer,
 						PWM_BUF_SIZE);
 			}
+			*/
+			Visual_Process(fft);
+
+			WS2812B_Show(VisualRenderer_GetFrame());
 		}
 	}
 }
 
+/*
 void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 {
 	if (htim->Instance == TIM1)
@@ -63,6 +72,7 @@ void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
 		ws2812bBusy = 0;
 	}
 }
+*/
 
 /*
  * 디버거 -------------------------------------------------------------------------------------
