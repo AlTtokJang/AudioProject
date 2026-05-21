@@ -24,7 +24,7 @@ void ADC_GetValue_VOL(uint8_t *out);
 /*
  * 디버거 -------------------------------------------------------------------------------------
  */
-#define ADC_DEBUG
+//#define ADC_DEBUG
 
 #ifdef ADC_DEBUG
 

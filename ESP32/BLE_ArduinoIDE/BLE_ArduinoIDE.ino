@@ -182,9 +182,9 @@ void setup()
    * Classic BT 출력 파워 낮춤.
    * 연결이 불안정하면 N12 → N9 → N6 순서로 올려봐.
    */
-  esp_bredr_tx_power_set(ESP_PWR_LVL_N12, ESP_PWR_LVL_N12);
+  esp_bredr_tx_power_set(ESP_PWR_LVL_N6, ESP_PWR_LVL_N6);
 
-  esp_bt_sleep_enable();
+  esp_bt_sleep_disable();
 }
 
 void loop()
@@ -205,6 +205,7 @@ static void setup_low_noise_mode(void)
    * Wi-Fi는 사용하지 않는다.
    */
   esp_wifi_stop();
+  esp_wifi_deinit();
 
   /*
    * A2DP는 Classic Bluetooth.
@@ -232,7 +233,7 @@ static void setup_i2s_48k(void)
     .communication_format = I2S_COMM_FORMAT_STAND_I2S,
     .intr_alloc_flags = 0,
     .dma_buf_count = 8,
-    .dma_buf_len = 256,
+    .dma_buf_len = 512,
     .use_apll = false,
     .tx_desc_auto_clear = true,
     .fixed_mclk = 0
@@ -491,7 +492,7 @@ static void audio_task(void *arg)
                 &bytes_written,
                 portMAX_DELAY);
 
-      reset_resampler(active_rate == 0 ? 44100 : active_rate);
+      //reset_resampler(active_rate == 0 ? 44100 : active_rate);
 
       debugAudioSilenceWrites++;
     }

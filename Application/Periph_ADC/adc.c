@@ -235,7 +235,7 @@ static void DigitalFilter_Aux(uint8_t target)
 
 	for (uint16_t i = 0; i < ADC_SAMPLE_SIZE; i++)
 	{
-		auxSample[i] = (int16_t)auxBuffer[offset + i] - 2048;
+		auxSample[i] = ((int16_t)auxBuffer[offset + i] - 2048) << 1;
 	}
 
 	AudioPipeline_Push(auxSample, ADC_SAMPLE_SIZE);
