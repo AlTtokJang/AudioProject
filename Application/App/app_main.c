@@ -25,54 +25,48 @@ static volatile uint8_t ws2812bBusy;
 
 void App_Main(void)
 {
-	LCD_PlotUi();
+	LCD_AppModeInit();
+
 	AudioPipeline_Init();
 	EQ_Init();
 	FFT_Init();
 	VisualRenderer_Init();
 
+	ADC_Start_VReg();
 	DAC_OutputStart();
-
 	HAL_TIM_Base_Start(&htim1);
+
+
+	#ifdef ADC_DEBUG
+	ADC_Start_Aux();
+	ADC_DebugStartAuxCapture();
+
+	while (!ADC_DebugIsAuxCaptureDone())
+	{
+	}
+
+	ADC_Stop_Aux();
+	ADC_DebugDumpAuxCaptureCsv();
 
 	while (1)
 	{
+	}
+	#endif
+
+	while (1)
+	{
+		LCD_DrawMainScreen();
 		AudioPipeline_Process();
 		AudioPipeline_Loger();
 
 		if (FFT_Run())
 		{
 			const float *fft = FFT_GetBandRaw();
-
-			/*
-			if (!ws2812bBusy)
-			{
-				Plot_WS2812B(levels);
-
-				ws2812bBusy = 1;
-				HAL_TIM_PWM_Start_DMA(
-						&htim1, TIM_CHANNEL_1,
-						(uint32_t *)pwmBuffer,
-						PWM_BUF_SIZE);
-			}
-			*/
 			Visual_Process(fft);
-
 			WS2812B_Show(VisualRenderer_GetFrame());
 		}
 	}
 }
-
-/*
-void HAL_TIM_PWM_PulseFinishedCallback(TIM_HandleTypeDef *htim)
-{
-	if (htim->Instance == TIM1)
-	{
-		HAL_TIM_PWM_Stop_DMA(&htim1, TIM_CHANNEL_1);
-		ws2812bBusy = 0;
-	}
-}
-*/
 
 /*
  * 디버거 -------------------------------------------------------------------------------------

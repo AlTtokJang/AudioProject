@@ -21,4 +21,17 @@ void ADC_Stop_VReg(void);
 void ADC_GetValue_EQ(uint8_t *out);
 void ADC_GetValue_VOL(uint8_t *out);
 
+/*
+ * 디버거 -------------------------------------------------------------------------------------
+ */
+#define ADC_DEBUG
+
+#ifdef ADC_DEBUG
+
+void ADC_DebugStartAuxCapture(void);
+void ADC_DebugDumpAuxCaptureCsv(void);
+uint8_t ADC_DebugIsAuxCaptureDone(void);
+
+#endif
+
 #endif /* PERIPH_ADC_ADC_H_ */

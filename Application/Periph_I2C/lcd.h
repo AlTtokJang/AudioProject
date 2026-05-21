@@ -10,6 +10,7 @@
 
 #include <stdint.h>
 
-void LCD_PlotUi(void);
+void LCD_AppModeInit(void);
+void LCD_DrawMainScreen(void);
 
 #endif /* PERIPH_I2C_LCD_H_ */

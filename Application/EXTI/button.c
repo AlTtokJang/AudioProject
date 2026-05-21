@@ -15,6 +15,7 @@
 volatile AudioSource_t audioSource = AUDIO_SRC_USB;
 volatile uint8_t fftUseEq = 0;
 volatile uint8_t i2sUseEq = 0;
+volatile uint8_t agcRun = 0;
 
 extern TIM_HandleTypeDef htim7;
 
@@ -87,6 +88,37 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 				buttonDebounceCount = 0;
 				Enable_EXTI();
 				return;
+		}
+
+		// BTN3 홀딩 처리
+		if (buttonDebounceTarget == BTN3_Pin)
+		{
+			if (raw == GPIO_PIN_SET)
+			{
+				if (buttonDebounceCount < 50)
+					buttonDebounceCount++;
+
+				if (buttonDebounceCount >= 50)
+				{
+					//Confirm_EXTI();
+					agcRun = 1;
+				}
+			}
+			else
+			{
+				buttonDebounceCount++;
+				if (buttonDebounceCount >= 200)
+				{
+					ButtonDebounce_TimerStop();
+					//Confirm_EXTI();
+					agcRun = 0;
+					buttonDebounceTarget = 0;
+					buttonDebounceCount = 0;
+					Enable_EXTI();
+				}
+			}
+
+			return;
 		}
 
 		if (raw == GPIO_PIN_SET)
@@ -185,8 +217,10 @@ static void Confirm_EXTI(void)
 			}
 			break;
 		case BTN2_Pin:
+			i2sUseEq = !i2sUseEq;
 			break;
 		case BTN3_Pin:
+			// Reserved
 			break;
 		case BTN4_Pin:
 			break;

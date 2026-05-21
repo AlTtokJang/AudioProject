@@ -11,6 +11,8 @@
 #include "global_define.h"
 #include "audio_pipeline.h"
 
+#include <stdio.h>
+
 #define ADC_SAMPLE_SIZE MASTER_BLOCK_SIZE
 #define ADC_BUFFER_SIZE ADC_SAMPLE_SIZE * 2
 
@@ -35,6 +37,10 @@ static void DigitalFilter_VReg(void);
 static volatile uint8_t auxIsRunning;
 static volatile uint8_t vregIsRunning;
 
+#ifdef ADC_DEBUG
+static void ADC_DebugCaptureAuxBlock(uint8_t target);
+#endif
+
 void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 {
 	if (hadc->Instance == ADC1)
@@ -42,6 +48,10 @@ void HAL_ADC_ConvHalfCpltCallback(ADC_HandleTypeDef *hadc)
 		if (auxIsRunning)
 		{
 			DigitalFilter_Aux(0);
+
+			#ifdef ADC_DEBUG
+			ADC_DebugCaptureAuxBlock(0);
+			#endif
 		}
 	}
 }
@@ -53,6 +63,10 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef *hadc)
 		if (auxIsRunning)
 		{
 			DigitalFilter_Aux(1);
+
+		#ifdef ADC_DEBUG
+		ADC_DebugCaptureAuxBlock(1);
+		#endif
 		}
 	}
 	else if (hadc->Instance == ADC3)
@@ -232,27 +246,122 @@ static void DigitalFilter_VReg(void)
 	for (uint8_t i = 0; i < VREG_BUFFER_SIZE; i++)
 	{
 		uint16_t raw = vregBuffer[i];
-		uint16_t target;
+		uint16_t targetLpf;
 
 		if (raw <= 50)
 		{
-			target = (raw * 67) / 50;				// 0~50 -> 0~67
+			// 0~50 -> 0~6700
+			targetLpf = (raw * 6700U + 25U) / 50U;
 		}
 		else
 		{
-			target = 67 + ((raw - 50) * 33) / 205;	// 50~255 -> 67~100
+			// 50~255 -> 6700~10000
+			targetLpf = 6700U + (((raw - 50U) * 3300U + 102U) / 205U);
 		}
 
-		uint16_t targetLpf = target * 100;			// 0~10000
-
 		if (targetLpf > vregLpf[i])
-			vregLpf[i] += (targetLpf - vregLpf[i]) >> 2;
+		{
+			uint16_t diff = targetLpf - vregLpf[i];
+			vregLpf[i] += (diff + 3U) >> 2;
+		}
 		else
-			vregLpf[i] -= (vregLpf[i] - targetLpf) >> 2;
+		{
+			uint16_t diff = vregLpf[i] - targetLpf;
+			vregLpf[i] -= (diff + 3U) >> 2;
+		}
 
-		vregValue[i] = vregLpf[i] / 100;
+		vregValue[i] = (vregLpf[i] + 50U) / 100U;
 
-		if (raw == 255 && vregValue[i] == 99)
-			vregValue[i] = 100;
+		if (vregValue[i] > 100U)
+		{
+			vregValue[i] = 100U;
+		}
 	}
 }
+
+/*
+ * 디버거 -------------------------------------------------------------------------------------
+ */
+
+#ifdef ADC_DEBUG
+
+#define AUX_CAPTURE_PAIRS		8192U
+#define AUX_CAPTURE_VALUES		(AUX_CAPTURE_PAIRS * 2U)
+
+static uint16_t auxCapture[AUX_CAPTURE_VALUES];
+static volatile uint32_t auxCaptureIndex = 0;
+static volatile uint8_t auxCaptureRunning = 0;
+static volatile uint8_t auxCaptureDone = 0;
+
+void ADC_DebugStartAuxCapture(void)
+{
+	auxCaptureIndex = 0;
+	auxCaptureDone = 0;
+	auxCaptureRunning = 1;
+}
+
+uint8_t ADC_DebugIsAuxCaptureDone(void)
+{
+	return auxCaptureDone;
+}
+
+static void ADC_DebugCaptureAuxBlock(uint8_t target)
+{
+	uint16_t offset;
+
+	if (!auxCaptureRunning)
+	{
+		return;
+	}
+
+	if (auxCaptureDone)
+	{
+		return;
+	}
+
+	if (target == 0)
+	{
+		offset = 0;
+	}
+	else
+	{
+		offset = ADC_SAMPLE_SIZE;
+	}
+
+	for (uint16_t i = 0; i < ADC_SAMPLE_SIZE; i++)
+	{
+		if (auxCaptureIndex >= AUX_CAPTURE_VALUES)
+		{
+			auxCaptureRunning = 0;
+			auxCaptureDone = 1;
+			return;
+		}
+
+		auxCapture[auxCaptureIndex] = auxBuffer[offset + i];
+		auxCaptureIndex++;
+	}
+
+	if (auxCaptureIndex >= AUX_CAPTURE_VALUES)
+	{
+		auxCaptureRunning = 0;
+		auxCaptureDone = 1;
+	}
+}
+
+void ADC_DebugDumpAuxCaptureCsv(void)
+{
+	char line[48];
+
+	UART3_Print("n,left,right\r\n");
+
+	for (uint32_t n = 0; n < AUX_CAPTURE_PAIRS; n++)
+	{
+		uint16_t left = auxCapture[n * 2U];
+		uint16_t right = auxCapture[n * 2U + 1U];
+
+		snprintf(line, sizeof(line), "%lu,%u,%u\r\n", n, left, right);
+		UART3_Print(line);
+	}
+}
+
+#endif
